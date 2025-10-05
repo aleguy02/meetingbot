@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Report - {{ meeting.id }}</title>
+    <style>
+        :root {
+            --bg: #0f1216;
+            --panel: #161b22;
+            --panel-border: #262e39;
+            --text: #e6edf3;
+            --muted: #9aa4b2;
+            --primary: #3b82f6;
+            --success: #22c55e;
+            --danger: #ef4444;
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--text);
+        }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 24px;
+            line-height: 1.6;
+        }
+        .header {
+            background-color: var(--panel);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            border: 1px solid var(--panel-border);
+        }
+        .meeting-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .info-card {
+            background-color: var(--panel);
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--panel-border);
+        }
+        .info-card h3 {
+            margin: 0 0 8px 0;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .info-card p {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .updates-section {
+            margin-top: 20px;
+        }
+        .update-item {
+            background-color: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+        .update-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed var(--panel-border);
+        }
+        .update-user {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 18px;
+        }
+        /* Vertical stack for fields */
+        .update-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .update-field {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 6px;
+            border-left: 0;
+        }
+        .update-field h4 {
+            margin: 0 0 6px 0;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .update-field p {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: var(--text);
+            background: #0c1117;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .no-updates {
+            text-align: center;
+            color: var(--muted);
+            font-style: italic;
+            padding: 32px;
+            background-color: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: 1px solid var(--panel-border);
+        }
+        .status-closed { background-color: var(--danger); color: #fff; }
+        .status-active { background-color: var(--success); color: #000; }
+        @media (max-width: 768px) {
+            .meeting-info { grid-template-columns: 1fr; }
+            .update-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Meeting Report: {{ meeting.id }}</h1>
+        <div class="status-badge {% if meeting.is_closed %}status-closed{% else %}status-active{% endif %}">
+            {% if meeting.is_closed %}Closed{% else %}Active{% endif %}
+        </div>
+    </div>
+
+    <div class="meeting-info">
+        <div class="info-card">
+            <h3>Owner</h3>
+            <p>{{ meeting.created_by }}</p>
+        </div>
+        {% if meeting.is_closed %}
+        <div class="info-card">
+            <h3>Closed</h3>
+            <p>{{ meeting.closed_at }}</p>
+        </div>
+        {% endif %}
+        <div class="info-card">
+            <h3>Total Updates</h3>
+            <p>{{ meeting.updates|length }}</p>
+        </div>
+    </div>
+
+    <div class="updates-section">
+        <h2>Meeting Updates</h2>
+        {% if meeting.updates %}
+            {% for update in meeting.updates %}
+            <div class="update-item">
+                <div class="update-header">
+                    <div class="update-user">{{ update.user }}</div>
+                </div>
+                <div class="update-content">
+                    <div class="update-field">
+                        <h4>Progress</h4>
+                        <p>{{ update.progress }}</p>
+                    </div>
+                    <div class="update-field">
+                        <h4>Blockers</h4>
+                        <p>{{ update.blockers }}</p>
+                    </div>
+                    <div class="update-field">
+                        <h4>Goals</h4>
+                        <p>{{ update.goals }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-updates">
+                <p>No updates have been submitted for this meeting.</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
