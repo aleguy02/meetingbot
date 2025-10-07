@@ -165,6 +165,10 @@ async def handle_close_meeting(interaction: discord.Interaction, meeting_id: str
             await interaction.response.send_message(f"❌ Meeting `{meeting_id}` is already closed.", ephemeral=True)
             return
         
+        if str(interaction.user) != meeting.created_by:
+            await interaction.response.send_message(f"❌ You did not open this meeting.", ephemeral=True)
+            return
+
         # Close the meeting
         meeting.close()
         bot.storage.save_meeting(meeting)
@@ -252,7 +256,7 @@ class UpdateModal(discord.ui.Modal, title="Meeting Update"):
                 return
             
             # Add update
-            update = meeting.add_update(
+            meeting.add_update(
                 user=str(interaction.user),
                 progress=self.progress.value.strip(),
                 blockers=self.blockers.value.strip(),
