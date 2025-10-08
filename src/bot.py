@@ -185,11 +185,16 @@ async def handle_close_meeting(interaction: discord.Interaction, meeting_id: str
                     bot.s3_storage.upload_html_report(meeting_id, html_content)
                 else:
                     print(f"Warning: Could not generate HTML report for meeting {meeting_id}")
+                
+                # Generate presigned URL
+                presigned_url = bot.s3_storage.generate_presigned_url(meeting_id)
             except Exception as e:
                 print(f"Warning: S3 upload failed for meeting {meeting_id}: {e}")
                 # Continue with Discord response even if S3 fails
         else:
             print(f"S3 not available, skipping upload for meeting {meeting_id}")
+        
+        presigned_url = presigned_url if presigned_url else "Automatic presigned url unavailable"
         
         # Generate summary
         embed = discord.Embed(
@@ -200,6 +205,7 @@ async def handle_close_meeting(interaction: discord.Interaction, meeting_id: str
         embed.add_field(name="Total Updates", value=str(len(meeting.updates)), inline=True)
         embed.add_field(name="Closed by", value=interaction.user.mention, inline=True)
         embed.add_field(name="Closed at", value=f"<t:{int(interaction.created_at.timestamp())}:F>", inline=True)
+        embed.add_field(name="View meeting report at presigned url:", value=presigned_url)
         
         embed.set_footer(text="Meeting data has been saved and locked.")
         
@@ -292,7 +298,6 @@ def main():
     load_dotenv()
     
     token = os.getenv('DISCORD_TOKEN')
-    print(token)
     if not token:
         print("❌ DISCORD_TOKEN not found in environment variables!")
         print("Please create a .env file with your Discord bot token.")

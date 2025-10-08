@@ -113,6 +113,18 @@ class S3Storage:
             print(f"Unexpected error uploading HTML report for {meeting_id}: {e}")
             return False
     
+    def generate_presigned_url(self, meeting_id: str) -> str:
+        """
+        Generate a presigned URL for the HTML report.
+        
+        Args:
+            meeting_id: The meeting ID
+            
+        Returns:
+            str: The presigned URL
+        """
+        return self.s3_client.generate_presigned_url('get_object', Params={'Bucket': self.bucket_name, 'Key': f'meetings/{meeting_id}/index.html'}, ExpiresIn=3600)
+    
     def test_connection(self) -> bool:
         """
         Test S3 connection by attempting to list bucket contents.
