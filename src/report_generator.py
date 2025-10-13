@@ -33,10 +33,7 @@ class ReportGenerator:
             str: HTML content as string, or None if generation failed
         """
         try:
-            # Load the template
             template = self.jinja_env.get_template('meeting_report.html')
-            
-            # Render template with meeting data
             html_content = template.render(meeting=meeting)
             
             print(f"Successfully generated HTML report for meeting {meeting.id}")

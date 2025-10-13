@@ -106,23 +106,9 @@ async def meetingbot_command(interaction: discord.Interaction, action: str, meet
 async def handle_new_meeting(interaction: discord.Interaction):
     """Handle creating a new meeting."""
     try:
-        # Create new meeting
-        meeting = Meeting.create_new(created_by=str(interaction.user))
-        bot.storage.save_meeting(meeting)
-        
-        embed = discord.Embed(
-            title="✅ New Meeting Created",
-            description=f"Meeting ID: `{meeting.id}`",
-            color=0x00ff00
-        )
-        embed.add_field(name="Created by", value=interaction.user.mention, inline=True)
-        embed.add_field(name="Created at", value=f"<t:{int(interaction.created_at.timestamp())}:F>", inline=True)
-        embed.add_field(name="Updates", value="0", inline=True)
-        
-        embed.set_footer(text="Use /meetingbot update <meeting_id> to add updates")
-        
-        await interaction.response.send_message(embed=embed)
-        
+        modal = CreateMeetingModal()
+        await interaction.response.send_modal(modal)
+
     except Exception as e:
         print(f"Error creating meeting: {e}")
         await interaction.response.send_message("❌ Failed to create meeting. Please try again.", ephemeral=True)
@@ -131,18 +117,21 @@ async def handle_new_meeting(interaction: discord.Interaction):
 async def handle_update_meeting(interaction: discord.Interaction, meeting_id: str):
     """Handle updating a meeting with a modal form."""
     try:
-        # Check if meeting exists
         meeting = bot.storage.load_meeting(meeting_id)
         if not meeting:
             await interaction.response.send_message(f"❌ Meeting `{meeting_id}` not found.", ephemeral=True)
             return
         
-        # Check if meeting is closed
         if meeting.is_closed:
             await interaction.response.send_message(f"❌ Meeting `{meeting_id}` is closed and cannot be updated.", ephemeral=True)
             return
+
+        # Check if user has already submitted an update for this meeting
+        user_str = str(interaction.user)
+        if any(update.user == user_str for update in meeting.updates):
+            await interaction.response.send_message(f"❌ You have already submitted an update for meeting `{meeting_id}`.", ephemeral=True)
+            return
         
-        # Create modal for update
         modal = UpdateModal(meeting_id)
         await interaction.response.send_modal(modal)
         
@@ -154,13 +143,11 @@ async def handle_update_meeting(interaction: discord.Interaction, meeting_id: st
 async def handle_close_meeting(interaction: discord.Interaction, meeting_id: str):
     """Handle closing a meeting."""
     try:
-        # Check if meeting exists
         meeting = bot.storage.load_meeting(meeting_id)
         if not meeting:
             await interaction.response.send_message(f"❌ Meeting `{meeting_id}` not found.", ephemeral=True)
             return
         
-        # Check if meeting is already closed
         if meeting.is_closed:
             await interaction.response.send_message(f"❌ Meeting `{meeting_id}` is already closed.", ephemeral=True)
             return
@@ -169,7 +156,6 @@ async def handle_close_meeting(interaction: discord.Interaction, meeting_id: str
             await interaction.response.send_message(f"❌ You did not open this meeting.", ephemeral=True)
             return
 
-        # Close the meeting
         meeting.close()
         bot.storage.save_meeting(meeting)
         
@@ -179,14 +165,11 @@ async def handle_close_meeting(interaction: discord.Interaction, meeting_id: str
                 # Generate HTML report
                 html_content = bot.report_generator.generate_html_report(meeting)
                 if html_content:
-                    # Upload meeting JSON to S3
                     bot.s3_storage.upload_meeting_json(meeting_id, meeting.to_dict())
-                    # Upload HTML report to S3
                     bot.s3_storage.upload_html_report(meeting_id, html_content)
                 else:
                     print(f"Warning: Could not generate HTML report for meeting {meeting_id}")
                 
-                # Generate presigned URL
                 presigned_url = bot.s3_storage.generate_presigned_url(meeting_id)
             except Exception as e:
                 print(f"Warning: S3 upload failed for meeting {meeting_id}: {e}")
@@ -202,10 +185,15 @@ async def handle_close_meeting(interaction: discord.Interaction, meeting_id: str
             description=f"Meeting `{meeting_id}` has been closed.",
             color=0xff6b6b
         )
+
         embed.add_field(name="Total Updates", value=str(len(meeting.updates)), inline=True)
         embed.add_field(name="Closed by", value=interaction.user.mention, inline=True)
         embed.add_field(name="Closed at", value=f"<t:{int(interaction.created_at.timestamp())}:F>", inline=True)
-        embed.add_field(name="View meeting report at presigned url:", value=presigned_url)
+
+        embed.add_field(name="View meeting report at presigned url:", value=presigned_url, inline=False)
+        
+        link = meeting.link if meeting.link else "This meeting has no link."
+        embed.add_field(name="Join meeting at link:", value=link, inline=False)
         
         embed.set_footer(text="Meeting data has been saved and locked.")
         
@@ -250,24 +238,7 @@ class UpdateModal(discord.ui.Modal, title="Meeting Update"):
     async def on_submit(self, interaction: discord.Interaction):
         """Handle form submission."""
         try:
-            # Load meeting
             meeting = bot.storage.load_meeting(self.meeting_id)
-            if not meeting:
-                await interaction.response.send_message(f"❌ Meeting `{self.meeting_id}` not found.", ephemeral=True)
-                return
-            
-            # Check if meeting is closed
-            if meeting.is_closed:
-                await interaction.response.send_message(f"❌ Meeting `{self.meeting_id}` is closed and cannot be updated.", ephemeral=True)
-                return
-            
-            # Check if user has already submitted an update for this meeting
-            user_str = str(interaction.user)
-            if any(update.user == user_str for update in meeting.updates):
-                await interaction.response.send_message(f"❌ You have already submitted an update for meeting `{self.meeting_id}`. Each user can only submit one update per meeting.", ephemeral=True)
-                return
-            
-            # Add update
             meeting.add_update(
                 user=str(interaction.user),
                 progress=self.progress.value.strip(),
@@ -275,10 +246,8 @@ class UpdateModal(discord.ui.Modal, title="Meeting Update"):
                 goals=self.goals.value.strip()
             )
             
-            # Save meeting
             bot.storage.save_meeting(meeting)
             
-            # Create response embed
             embed = discord.Embed(
                 title="✅ Update Added",
                 description=f"Your update has been added to meeting `{self.meeting_id}`",
@@ -298,6 +267,51 @@ class UpdateModal(discord.ui.Modal, title="Meeting Update"):
             print(f"Error submitting update: {e}")
             await interaction.response.send_message("❌ Failed to submit update. Please try again.", ephemeral=True)
 
+class CreateMeetingModal(discord.ui.Modal, title="Create Meeting"):
+    """Modal form for creating a new meeting."""
+    
+    def __init__(self):
+        super().__init__()
+    
+    name = discord.ui.TextInput(
+        label="Name",
+        placeholder="What is the name of the meeting?",
+        style=discord.TextStyle.paragraph,
+        max_length=50,
+        required=False
+    )
+    
+    link = discord.ui.TextInput(
+        label="Link",
+        placeholder="What is the link to the meeting?",
+        style=discord.TextStyle.paragraph,
+        max_length=500,
+        required=False
+    )
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """Handle form submission."""
+        try:
+            name = self.name.value.strip() if self.name.value else ""
+            link = self.link.value.strip() if self.link.value else ""
+            meeting = Meeting.create_new(created_by=str(interaction.user), name=name, link=link)
+            bot.storage.save_meeting(meeting)
+            
+            embed = discord.Embed(
+                title="✅ New Meeting Created",
+                description=f"Meeting ID: `{meeting.id}`",
+                color=0x00ff00
+            )
+            embed.add_field(name="Created by", value=interaction.user.mention, inline=True)
+            embed.add_field(name="Created at", value=f"<t:{int(interaction.created_at.timestamp())}:F>", inline=True)
+            embed.add_field(name="Updates", value="0", inline=True)
+            
+            embed.set_footer(text="Use /meetingbot update <meeting_id> to add updates")
+            
+            await interaction.response.send_message(embed=embed)
+        except Exception as e:
+            print(f"Error creating meeting: {e}")
+            await interaction.response.send_message("❌ Failed to create meeting. Please try again.", ephemeral=True)
 
 def main():
     """Main function to run the bot."""

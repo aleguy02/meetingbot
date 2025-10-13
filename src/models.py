@@ -46,9 +46,11 @@ class Meeting:
     created_by: str
     created_at: str
     updates: List[Update]
+    name: str
+    link: str
     is_closed: bool = False
     closed_at: Optional[str] = None
-    
+
     def add_update(self, user: str, progress: str, blockers: str, goals: str) -> Update:
         """Add a new update to the meeting."""
         if self.is_closed:
@@ -81,7 +83,9 @@ class Meeting:
             'created_at': self.created_at,
             'updates': [asdict(update) for update in self.updates],
             'is_closed': self.is_closed,
-            'closed_at': self.closed_at
+            'closed_at': self.closed_at,
+            'name': self.name,
+            'link': self.link
         }
     
     @classmethod
@@ -95,11 +99,13 @@ class Meeting:
             created_at=data['created_at'],
             updates=updates,
             is_closed=data.get('is_closed', False),
-            closed_at=data.get('closed_at')
+            closed_at=data.get('closed_at'),
+            name=data.get('name'),
+            link=data.get('link')
         )
     
     @classmethod
-    def create_new(cls, created_by: str) -> 'Meeting':
+    def create_new(cls, created_by: str, name: str, link: str) -> 'Meeting':
         """Create a new meeting."""
         now = datetime.now()
         # Prefix ID with yy-m-d (e.g., 25-9-10) and append short random suffix for uniqueness
@@ -110,6 +116,8 @@ class Meeting:
             id=meeting_id,
             created_by=created_by,
             created_at=now.isoformat(),
-            updates=[]
+            updates=[],
+            name=name if name else meeting_id,
+            link=link
         )
 

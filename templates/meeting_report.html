@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meeting Report - {{ meeting.id }}</title>
+    <title>Meeting Report - {{ meeting.name }}</title>
     <style>
         :root {
             --bg: #0f1216;
@@ -138,7 +138,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Meeting Report: {{ meeting.id }}</h1>
+        <h1>Meeting Report: {{ meeting.name }}</h1>
         <div class="status-badge {% if meeting.is_closed %}status-closed{% else %}status-active{% endif %}">
             {% if meeting.is_closed %}Closed{% else %}Active{% endif %}
         </div>
