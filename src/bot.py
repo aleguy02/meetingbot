@@ -261,6 +261,12 @@ class UpdateModal(discord.ui.Modal, title="Meeting Update"):
                 await interaction.response.send_message(f"❌ Meeting `{self.meeting_id}` is closed and cannot be updated.", ephemeral=True)
                 return
             
+            # Check if user has already submitted an update for this meeting
+            user_str = str(interaction.user)
+            if any(update.user == user_str for update in meeting.updates):
+                await interaction.response.send_message(f"❌ You have already submitted an update for meeting `{self.meeting_id}`. Each user can only submit one update per meeting.", ephemeral=True)
+                return
+            
             # Add update
             meeting.add_update(
                 user=str(interaction.user),
