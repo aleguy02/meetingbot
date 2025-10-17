@@ -20,9 +20,16 @@ A Discord bot for managing team meetings with structured updates, progress track
 
 You can run the bot after cloning the bot, creating a Discord app and AWS infrastructure, and filling out the environment variables
 
-**Run the bot**
+**Run the bot with Python**
 ```bash
+pip install -r requirements.txt
 python main.py
+```
+
+**Run the bot with Docker**
+```bash
+docker build -t meetingbot .
+docker run -v "$PWD/json":/meetingbot/json meetingbot:latest
 ```
 
 ### Previewing the HTML Report Locally (No Bot, No S3)
